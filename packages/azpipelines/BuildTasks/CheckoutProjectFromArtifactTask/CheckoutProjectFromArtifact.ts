@@ -195,13 +195,20 @@ async function getGithubEndPointToken(
     } else if (githubEndpointObject.scheme) {
       let idToken = githubEndpointObject.parameters.IdToken;
       let idSignature = githubEndpointObject.parameters.IdSignature;
+      try
+      {
       const data = await request(
-        `https://api.github.com/app/installations/${idToken}/access_tokens`,  {
-          Authorization: `Bearer ${idSignature}`,
+        `https://api.github.com/app/installations/:installation_id/access_tokens`,  {
+          Authorization: `Bearer ${idToken}`,
           Accept: `application/vnd.github.machine-man-preview+json`,
         },'POST', null);
       
       console.log(data);
+      }
+      catch(error)
+      {
+        console.log(error);
+      }
     }
   }
 
@@ -228,6 +235,8 @@ const request = async (url,headers, method = 'POST', postData) => {
   };
 
   return new Promise((resolve, reject) => {
+    console.log(JSON.stringify(params));
+    
     const req = lib.request(params, res => {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         return reject(new Error(`Status Code: ${res.statusCode}`));
