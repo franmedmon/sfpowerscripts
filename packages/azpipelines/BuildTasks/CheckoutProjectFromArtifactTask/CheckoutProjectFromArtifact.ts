@@ -192,7 +192,7 @@ async function getGithubEndPointToken(
       githubEndpointToken = githubEndpointObject.parameters.AccessToken;
     } else if (githubEndpointObject.scheme === "Token") {
       githubEndpointToken = githubEndpointObject.parameters.AccessToken;
-    } else if (githubEndpointObject.scheme) {
+    } else if (githubEndpointObject.scheme === "InstallationToken") {
       let idToken = githubEndpointObject.parameters.IdToken;
       let idSignature = githubEndpointObject.parameters.IdSignature;
       try
@@ -210,10 +210,6 @@ async function getGithubEndPointToken(
         console.log(error);
       }
     }
-  }
-
-  if (!githubEndpointToken) {
-    throw new Error(tl.loc("InvalidGitHubEndpoint", githubEndpoint));
   }
 
   return { token: githubEndpointToken, scheme: githubEndpointObject.scheme };
@@ -236,7 +232,7 @@ const request = async (url,headers, method = 'POST', postData) => {
 
   return new Promise((resolve, reject) => {
     console.log(JSON.stringify(params));
-    
+
     const req = lib.request(params, res => {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         return reject(new Error(`Status Code: ${res.statusCode}`));
