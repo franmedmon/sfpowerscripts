@@ -45,7 +45,7 @@ async function run() {
         let githubEndpoint: {
           token: string;
           scheme: string;
-        } = getGithubEndPointToken(connection);
+        } = await getGithubEndPointToken(connection);
         token = githubEndpoint.token;
         scheme = githubEndpoint.scheme;
       } else if (version_control_provider == "bitbucket") {
@@ -174,9 +174,9 @@ async function run() {
   }
 }
 
-function getGithubEndPointToken(
+async function getGithubEndPointToken(
   githubEndpoint: string
-): { token: string; scheme: string } {
+): Promise<{ token: string; scheme: string }> {
   const githubEndpointObject = tl.getEndpointAuthorization(
     githubEndpoint,
     false
@@ -195,7 +195,13 @@ function getGithubEndPointToken(
     } else if (githubEndpointObject.scheme) {
       let idToken = githubEndpointObject.parameters.IdToken;
       let idSignature = githubEndpointObject.parameters.IdSignature;
-      getGithubAccessTokenFromInstalledApp(idToken, idSignature);
+      const data = await request(
+        `https://api.github.com/app/installations/${idToken}/access_tokens`,  {
+          Authorization: `Bearer ${idSignature}`,
+          Accept: `application/vnd.github.machine-man-preview+json`,
+        },'POST', null);
+      
+      console.log(data);
     }
   }
 
@@ -206,34 +212,45 @@ function getGithubEndPointToken(
   return { token: githubEndpointToken, scheme: githubEndpointObject.scheme };
 }
 
-function getGithubAccessTokenFromInstalledApp(
-  idToken: string,
-  idSignature: string
-) {
-  const options = {
-    hostname: "api.github.com",
+
+
+const request = async (url,headers, method = 'POST', postData) => {
+  const lib = https;
+  const [h, path] = url.split('://')[1].split('/');
+  const [host, port] = h.split(':');
+
+  const params = {
+    method,
+    host,
+    headers: headers,
     port: 443,
-    path: `app/installations/:${idToken}/access_tokens`,
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${idSignature}`,
-      Accept: `application/vnd.github.machine-man-preview+json`,
-    },
+    path: path || '/',
   };
 
-  const req = https.request(options, (res) => {
-    console.log(`statusCode: ${res.statusCode}`);
+  return new Promise((resolve, reject) => {
+    const req = lib.request(params, res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error(`Status Code: ${res.statusCode}`));
+      }
 
-    res.on("data", (d) => {
-      process.stdout.write(d);
+      const data = [];
+
+      res.on('data', chunk => {
+        data.push(chunk);
+      });
+
+      res.on('end', () => resolve(Buffer.concat(data).toString()));
     });
-  });
 
-  req.on("error", (error) => {
-    console.error(error);
-  });
+    req.on('error', reject);
 
-  req.end();
-}
+    if (postData) {
+      req.write(postData);
+    }
+
+    // IMPORTANT
+    req.end();
+  });
+};
 
 run();
