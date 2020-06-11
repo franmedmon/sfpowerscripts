@@ -5,6 +5,7 @@ import simplegit from "simple-git/promise";
 import { isNullOrUndefined } from "util";
 import { stringify } from "querystring";
 var shell = require("shelljs");
+const https = require("https");
 
 async function run() {
   try {
@@ -15,7 +16,7 @@ async function run() {
     let package_version_id_file_path: string;
     let version_control_provider: string;
     let token: string;
-    let scheme:string;
+    let scheme: string;
     let username: string;
 
     //Read Git User Endpoint
@@ -41,7 +42,10 @@ async function run() {
         version_control_provider == "github" ||
         version_control_provider == "githubEnterprise"
       ) {
-        let githubEndpoint:{token:string,scheme:string} = getGithubEndPointToken(connection);
+        let githubEndpoint: {
+          token: string;
+          scheme: string;
+        } = getGithubEndPointToken(connection);
         token = githubEndpoint.token;
         scheme = githubEndpoint.scheme;
       } else if (version_control_provider == "bitbucket") {
@@ -64,23 +68,19 @@ async function run() {
       ? "artifact_metadata"
       : packageName + "_artifact_metadata";
 
-    if (attachedArtifactType == 'AzureArtifact') {
-
+    if (attachedArtifactType == "AzureArtifact") {
       package_version_id_file_path = path.join(
         artifact_directory,
         artifact,
         artifactFileNameSelector
       );
-
     } else {
-
       package_version_id_file_path = path.join(
         artifact_directory,
         artifact,
         "sfpowerkit_artifact",
         artifactFileNameSelector
       );
-      
     }
 
     let package_metadata_json = fs
@@ -125,17 +125,9 @@ async function run() {
         version_control_provider == "github" ||
         version_control_provider == "githubEnterprise"
       ) {
-
-
-        if(scheme === 'InstallationToken')
-        {
+        if (scheme === "InstallationToken") {
           remote = `https://x-access-token:${token}@${repository_url}`;
-        }
-        else
-         remote = `https://${token}:x-oauth-basic@${repository_url}`;
-
-
-
+        } else remote = `https://${token}:x-oauth-basic@${repository_url}`;
       } else if (version_control_provider == "otherGit") {
         remote = `https://${username}:${token}@${repository_url}`;
       }
@@ -182,29 +174,66 @@ async function run() {
   }
 }
 
-function getGithubEndPointToken(githubEndpoint: string): {token:string,scheme:string} {
-  const githubEndpointObject = tl.getEndpointAuthorization(githubEndpoint, false);
+function getGithubEndPointToken(
+  githubEndpoint: string
+): { token: string; scheme: string } {
+  const githubEndpointObject = tl.getEndpointAuthorization(
+    githubEndpoint,
+    false
+  );
   let githubEndpointToken: string = null;
 
   if (!!githubEndpointObject) {
-      tl.debug('Endpoint scheme: ' + githubEndpointObject.scheme);
+    tl.debug("Endpoint scheme: " + githubEndpointObject.scheme);
 
-      if (githubEndpointObject.scheme === 'PersonalAccessToken') {
-          githubEndpointToken = githubEndpointObject.parameters.accessToken;
-      } else if (githubEndpointObject.scheme === 'OAuth') {
-          githubEndpointToken = githubEndpointObject.parameters.AccessToken;
-      } else if (githubEndpointObject.scheme === 'Token') {
-          githubEndpointToken = githubEndpointObject.parameters.AccessToken;
-      } else if (githubEndpointObject.scheme) {
-        githubEndpointToken = githubEndpointObject.parameters.IdToken
-      }
+    if (githubEndpointObject.scheme === "PersonalAccessToken") {
+      githubEndpointToken = githubEndpointObject.parameters.accessToken;
+    } else if (githubEndpointObject.scheme === "OAuth") {
+      githubEndpointToken = githubEndpointObject.parameters.AccessToken;
+    } else if (githubEndpointObject.scheme === "Token") {
+      githubEndpointToken = githubEndpointObject.parameters.AccessToken;
+    } else if (githubEndpointObject.scheme) {
+      let idToken = githubEndpointObject.parameters.IdToken;
+      let idSignature = githubEndpointObject.parameters.IdSignature;
+      getGithubAccessTokenFromInstalledApp(idToken, idSignature);
+    }
   }
 
   if (!githubEndpointToken) {
-      throw new Error(tl.loc('InvalidGitHubEndpoint', githubEndpoint));
+    throw new Error(tl.loc("InvalidGitHubEndpoint", githubEndpoint));
   }
 
-  return {token:githubEndpointToken, scheme:githubEndpointObject.scheme}
+  return { token: githubEndpointToken, scheme: githubEndpointObject.scheme };
+}
+
+function getGithubAccessTokenFromInstalledApp(
+  idToken: string,
+  idSignature: string
+) {
+  const options = {
+    hostname: "api.github.com",
+    port: 443,
+    path: `app/installations/:${idToken}/access_tokens`,
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idSignature}`,
+      Accept: `application/vnd.github.machine-man-preview+json`,
+    },
+  };
+
+  const req = https.request(options, (res) => {
+    console.log(`statusCode: ${res.statusCode}`);
+
+    res.on("data", (d) => {
+      process.stdout.write(d);
+    });
+  });
+
+  req.on("error", (error) => {
+    console.error(error);
+  });
+
+  req.end();
 }
 
 run();
