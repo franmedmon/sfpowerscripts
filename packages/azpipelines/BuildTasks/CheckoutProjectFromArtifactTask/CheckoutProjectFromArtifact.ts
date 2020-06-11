@@ -3,6 +3,7 @@ var fs = require("fs-extra");
 const path = require("path");
 import simplegit from "simple-git/promise";
 import { isNullOrUndefined } from "util";
+import { stringify } from "querystring";
 var shell = require("shelljs");
 
 async function run() {
@@ -14,6 +15,7 @@ async function run() {
     let package_version_id_file_path: string;
     let version_control_provider: string;
     let token: string;
+    let scheme:string;
     let username: string;
 
     //Read Git User Endpoint
@@ -39,7 +41,9 @@ async function run() {
         version_control_provider == "github" ||
         version_control_provider == "githubEnterprise"
       ) {
-        token = getGithubEndPointToken(connection);
+        let githubEndpoint:{token:string,scheme:string} = getGithubEndPointToken(connection);
+        token = githubEndpoint.token;
+        scheme = githubEndpoint.scheme;
       } else if (version_control_provider == "bitbucket") {
         token = tl.getEndpointAuthorizationParameter(
           connection,
@@ -123,8 +127,12 @@ async function run() {
       ) {
 
 
-
-        remote = `https://${token}:x-oauth-basic@${repository_url}`;
+        if(scheme === 'InstallationToken')
+        {
+          remote = `https://x-access-token:${token}@${repository_url}`;
+        }
+        else
+         remote = `https://${token}:x-oauth-basic@${repository_url}`;
 
 
 
@@ -174,7 +182,7 @@ async function run() {
   }
 }
 
-function getGithubEndPointToken(githubEndpoint: string): string {
+function getGithubEndPointToken(githubEndpoint: string): {token:string,scheme:string} {
   const githubEndpointObject = tl.getEndpointAuthorization(githubEndpoint, false);
   let githubEndpointToken: string = null;
 
@@ -188,8 +196,7 @@ function getGithubEndPointToken(githubEndpoint: string): string {
       } else if (githubEndpointObject.scheme === 'Token') {
           githubEndpointToken = githubEndpointObject.parameters.AccessToken;
       } else if (githubEndpointObject.scheme) {
-         
-        console.log(JSON.stringify(githubEndpointObject));
+        githubEndpointToken = githubEndpointObject.parameters.IdToken
       }
   }
 
@@ -197,7 +204,7 @@ function getGithubEndPointToken(githubEndpoint: string): string {
       throw new Error(tl.loc('InvalidGitHubEndpoint', githubEndpoint));
   }
 
-  return githubEndpointToken;
+  return {token:githubEndpointToken, scheme:githubEndpointObject.scheme}
 }
 
 run();
