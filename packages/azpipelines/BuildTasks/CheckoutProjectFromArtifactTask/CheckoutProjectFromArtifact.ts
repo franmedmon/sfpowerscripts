@@ -188,7 +188,8 @@ function getGithubEndPointToken(githubEndpoint: string): string {
       } else if (githubEndpointObject.scheme === 'Token') {
           githubEndpointToken = githubEndpointObject.parameters.AccessToken;
       } else if (githubEndpointObject.scheme) {
-          throw new Error(tl.loc('InvalidEndpointAuthScheme', githubEndpointObject.scheme));
+         
+        console.log(JSON.stringify(githubEndpointObject));
       }
   }
 
