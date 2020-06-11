@@ -39,11 +39,7 @@ async function run() {
         version_control_provider == "github" ||
         version_control_provider == "githubEnterprise"
       ) {
-        token = tl.getEndpointAuthorizationParameter(
-          connection,
-          "AccessToken",
-          true
-        );
+        token = getGithubEndPointToken(connection);
       } else if (version_control_provider == "bitbucket") {
         token = tl.getEndpointAuthorizationParameter(
           connection,
@@ -125,7 +121,13 @@ async function run() {
         version_control_provider == "github" ||
         version_control_provider == "githubEnterprise"
       ) {
+
+
+
         remote = `https://${token}:x-oauth-basic@${repository_url}`;
+
+
+
       } else if (version_control_provider == "otherGit") {
         remote = `https://${username}:${token}@${repository_url}`;
       }
@@ -170,6 +172,31 @@ async function run() {
   } catch (err) {
     tl.setResult(tl.TaskResult.Failed, err.message);
   }
+}
+
+function getGithubEndPointToken(githubEndpoint: string): string {
+  const githubEndpointObject = tl.getEndpointAuthorization(githubEndpoint, false);
+  let githubEndpointToken: string = null;
+
+  if (!!githubEndpointObject) {
+      tl.debug('Endpoint scheme: ' + githubEndpointObject.scheme);
+
+      if (githubEndpointObject.scheme === 'PersonalAccessToken') {
+          githubEndpointToken = githubEndpointObject.parameters.accessToken;
+      } else if (githubEndpointObject.scheme === 'OAuth') {
+          githubEndpointToken = githubEndpointObject.parameters.AccessToken;
+      } else if (githubEndpointObject.scheme === 'Token') {
+          githubEndpointToken = githubEndpointObject.parameters.AccessToken;
+      } else if (githubEndpointObject.scheme) {
+          throw new Error(tl.loc('InvalidEndpointAuthScheme', githubEndpointObject.scheme));
+      }
+  }
+
+  if (!githubEndpointToken) {
+      throw new Error(tl.loc('InvalidGitHubEndpoint', githubEndpoint));
+  }
+
+  return githubEndpointToken;
 }
 
 run();

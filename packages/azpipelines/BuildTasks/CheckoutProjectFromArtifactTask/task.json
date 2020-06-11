@@ -7,9 +7,9 @@
     "category": "Utility",
     "author": "dxatscale@accenture.com",
     "version": {
-        "Major": 12,
+        "Major": 13,
         "Minor": 0,
-        "Patch": 1
+        "Patch": 0
     },
     "runsOn": [
         "Agent"
@@ -47,7 +47,7 @@
         },
         {
             "name": "github_connection",
-            "type": "connectedService:github:OAuth,PersonalAccessToken,OAuth2",
+            "type": "connectedService:github:OAuth,PersonalAccessToken,OAuth2,InstallationToken,Token",
             "label": "GitHub Connection",
             "defaultValue": "",
             "required": false,
