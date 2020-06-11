@@ -129,9 +129,11 @@ async function run() {
       ) {
         if (scheme === "InstallationToken") {
           remote = `https://x-access-token:${token}@${repository_url}`;
+          console.log('Fetching from remote:',remote);
         } else remote = `https://${token}:x-oauth-basic@${repository_url}`;
       } else if (version_control_provider == "otherGit") {
         remote = `https://${username}:${token}@${repository_url}`;
+        console.log('Fetching from remote:',remote);
       }
 
       await git.silent(false).clone(remote, local_source_directory);
@@ -197,15 +199,7 @@ async function getGithubEndPointToken(
     } else if (githubEndpointObject.scheme === "InstallationToken") {
       let idToken = githubEndpointObject.parameters.IdToken;
       let idSignature = githubEndpointObject.parameters.IdSignature;
-      try
-      {
-      const data = await request(idToken,idSignature);
-      console.log(data);
-      }
-      catch(error)
-      {
-        console.log(error);
-      }
+      
     }
   }
 
