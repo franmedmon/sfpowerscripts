@@ -48,6 +48,8 @@ async function run() {
         } = await getGithubEndPointToken(connection);
         token = githubEndpoint.token;
         scheme = githubEndpoint.scheme;
+
+        console.log(JSON.stringify(githubEndpoint));
       } else if (version_control_provider == "bitbucket") {
         token = tl.getEndpointAuthorizationParameter(
           connection,
@@ -197,12 +199,7 @@ async function getGithubEndPointToken(
       let idSignature = githubEndpointObject.parameters.IdSignature;
       try
       {
-      const data = await request(
-        `https://api.github.com/app/installations/:installation_id/access_tokens`,  {
-          Authorization: `Bearer ${idToken}`,
-          Accept: `application/vnd.github.machine-man-preview+json`,
-        },'POST', null);
-      
+      const data = await request(idToken,idSignature);
       console.log(data);
       }
       catch(error)
@@ -215,44 +212,40 @@ async function getGithubEndPointToken(
   return { token: githubEndpointToken, scheme: githubEndpointObject.scheme };
 }
 
-
-
-const request = async (url,headers, method = 'POST', postData) => {
+const request = async (idToken:string, idSignature:string) => {
   const lib = https;
-  const [h, path] = url.split('://')[1].split('/');
-  const [host, port] = h.split(':');
 
   const params = {
-    method,
-    host,
-    headers: headers,
+    method: "POST",
+    host: "api.github.com",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      Accept: `application/vnd.github.machine-man-preview+json`,
+    },
     port: 443,
-    path: path || '/',
+    path: "app/installations/:installation_id/access_tokens",
   };
 
   return new Promise((resolve, reject) => {
     console.log(JSON.stringify(params));
 
-    const req = lib.request(params, res => {
+    const req = lib.request(params, (res) => {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         return reject(new Error(`Status Code: ${res.statusCode}`));
       }
 
       const data = [];
 
-      res.on('data', chunk => {
+      res.on("data", (chunk) => {
         data.push(chunk);
       });
 
-      res.on('end', () => resolve(Buffer.concat(data).toString()));
+      res.on("end", () => resolve(Buffer.concat(data).toString()));
     });
 
-    req.on('error', reject);
+    req.on("error", reject);
 
-    if (postData) {
-      req.write(postData);
-    }
-
+ 
     // IMPORTANT
     req.end();
   });
